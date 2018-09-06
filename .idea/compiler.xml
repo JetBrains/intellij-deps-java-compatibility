@@ -2,7 +2,7 @@
 <project version="4">
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
-      <module name="Java9Compatibility" options="" />
+      <module name="intellij-deps-java-compatibility" options="" />
     </option>
   </component>
 </project>
