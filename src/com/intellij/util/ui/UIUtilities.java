@@ -27,8 +27,6 @@ package com.intellij.util.ui;
 
 import sun.awt.AppContext;
 import sun.awt.SunToolkit;
-import sun.font.FontDesignMetrics;
-import sun.font.FontUtilities;
 import sun.java2d.SunGraphicsEnvironment;
 import sun.print.ProxyPrintGraphics;
 import sun.swing.ImageIconUIResource;
@@ -121,7 +119,7 @@ public class UIUtilities {
      * the value of the property is set to null in JComponent.setUI
      */
     public static final Object AA_TEXT_PROPERTY_KEY =
-            new StringBuffer("AATextInfoPropertyKey");
+        new TempFieldAccessor<>("sun.swing.SwingUtilities2", "AA_TEXT_PROPERTY_KEY").get(null);
 
     /**
      * Attribute key for the content elements.  If it is set on an element, the
@@ -136,93 +134,11 @@ public class UIUtilities {
     private static final StringBuilder SKIP_CLICK_COUNT =
             new StringBuilder("skipClickCount");
 
-    /* Presently this class assumes default fractional metrics.
-     * This may need to change to emulate future platform L&Fs.
-     */
-    public static class AATextInfo {
+    private static TempMethodInvocator<Object> AATextInfoAccessor =
+        new TempMethodInvocator<>("sun.swing.SwingUtilities2$AATextInfo", Object.class, Integer.class);
 
-        private static AATextInfo getAATextInfoFromMap(Map hints) {
-
-            Object aaHint   = hints.get(KEY_TEXT_ANTIALIASING);
-            Object contHint = hints.get(KEY_TEXT_LCD_CONTRAST);
-
-            if (aaHint == null) {
-                return null;
-            } else {
-                return new AATextInfo(aaHint, (Integer)contHint);
-            }
-        }
-
-        public static AATextInfo getAATextInfo(boolean lafCondition) {
-            SunToolkit.setAAFontSettingsCondition(lafCondition);
-            Toolkit tk = Toolkit.getDefaultToolkit();
-            Object map = tk.getDesktopProperty(SunToolkit.DESKTOPFONTHINTS);
-            if (map instanceof Map) {
-                return getAATextInfoFromMap((Map)map);
-            } else {
-                return null;
-            }
-        }
-
-        Object aaHint;
-        Integer lcdContrastHint;
-        Map<Object, FontRenderContext> cache = new HashMap<Object, FontRenderContext>();
-
-        /* These are rarely constructed objects, and only when a complete
-         * UI is being updated, so the cost of the tests here is minimal
-         * and saves tests elsewhere.
-         * We test that the values are ones we support/expect.
-         */
-        public AATextInfo(Object aaHint, Integer lcdContrastHint) {
-            if (aaHint == null) {
-                throw new InternalError("null not allowed here");
-            }
-            this.aaHint = aaHint;
-            this.lcdContrastHint = lcdContrastHint;
-        }
-
-        private static class KeyPair {
-
-            private final Object key1;
-            private final Object key2;
-
-            public KeyPair(Object key1, Object key2) {
-                this.key1 = key1;
-                this.key2 = key2;
-            }
-
-            @Override
-            public boolean equals(Object obj) {
-                if (!(obj instanceof KeyPair)) {
-                    return false;
-                }
-                KeyPair that = (KeyPair) obj;
-                return this.key1.equals(that.key1) && this.key2.equals(that.key2);
-            }
-
-            @Override
-            public int hashCode() {
-                return key1.hashCode() + 37 * key2.hashCode();
-            }
-        }
-
-        // [tav] see JDK-8142966
-        FontRenderContext getFRC(AffineTransform tx) {
-            if (tx == null && aaHint == null) {
-                return null;
-            }
-            Object key = (tx == null)
-                    ? aaHint
-                    : (aaHint == null ? tx : new KeyPair(tx, aaHint));
-
-            FontRenderContext frc = cache.get(key);
-            if (frc == null) {
-                aaHint = (aaHint == null) ? VALUE_ANTIALIAS_OFF : aaHint;
-                frc = new FontRenderContext(tx, aaHint, VALUE_FRACTIONALMETRICS_DEFAULT);
-                cache.put(key, frc);
-            }
-            return frc;
-        }
+    public static Object createAATextInfo(Object aaHint, Integer lcdContrastHint) {
+        return AATextInfoAccessor.create(aaHint, lcdContrastHint);
     }
 
     /**
@@ -263,6 +179,10 @@ public class UIUtilities {
         return length;
     }
 
+    private static TempMethodInvocator<Boolean> isComplexLayoutAccessor =
+            new TempMethodInvocator<>("sun.swing.SwingUtilities2", "isComplexLayout",
+                    char[].class, int.class, int.class);
+
     /**
      * checks whether TextLayout is required to handle characters.
      *
@@ -273,7 +193,7 @@ public class UIUtilities {
      *         <tt>false</tt> if TextLayout is not required
      */
     public static final boolean isComplexLayout(char[] text, int start, int limit) {
-        return FontUtilities.isComplexText(text, start, limit);
+        return isComplexLayoutAccessor.staticInvoke(text, start, limit);
     }
 
     //
@@ -287,22 +207,6 @@ public class UIUtilities {
     // In other words, if you add new functionality to these methods you
     // need to gracefully handle null.
     //
-
-    /**
-     * Returns whether or not text should be drawn antialiased.
-     *
-     * @param c JComponent to test.
-     * @return Whether or not text should be drawn antialiased for the
-     *         specified component.
-     */
-    public static AATextInfo drawTextAntialiased(JComponent c) {
-        if (c != null) {
-            /* a non-null property implies some form of AA requested */
-            return (AATextInfo)c.getClientProperty(AA_TEXT_PROPERTY_KEY);
-        }
-        // No component, assume aa is off
-        return null;
-    }
 
     /**
      * Returns the left side bearing of the first character of string. The
@@ -369,6 +273,10 @@ public class UIUtilities {
         return 0;
     }
 
+    private static TempMethodInvocator<FontMetrics> getFontMetricsAccessor1 =
+            new TempMethodInvocator<>("sun.swing.SwingUtilities2", "getFontMetrics",
+                    JComponent.class, Graphics.class);
+
     /**
      * Returns the FontMetrics for the current Font of the passed
      * in Graphics.  This method is used when a Graphics
@@ -386,9 +294,12 @@ public class UIUtilities {
      * @param g Graphics Graphics
      */
     public static FontMetrics getFontMetrics(JComponent c, Graphics g) {
-        return getFontMetrics(c, g, g.getFont());
+        return getFontMetricsAccessor1.staticInvoke(c, g);
     }
 
+    private static TempMethodInvocator<FontMetrics> getFontMetricsAccessor3 =
+            new TempMethodInvocator<>("sun.swing.SwingUtilities2", "getFontMetrics",
+                    JComponent.class, Graphics.class, Font.class);
 
     /**
      * Returns the FontMetrics for the specified Font.
@@ -409,15 +320,12 @@ public class UIUtilities {
      */
     public static FontMetrics getFontMetrics(JComponent c, Graphics g,
                                              Font font) {
-        if (c != null) {
-            // Note: We assume that we're using the FontMetrics
-            // from the widget to layout out text, otherwise we can get
-            // mismatches when printing.
-            return c.getFontMetrics(font);
-        }
-        return Toolkit.getDefaultToolkit().getFontMetrics(font);
+        return getFontMetricsAccessor3.staticInvoke(c, g, font);
     }
 
+    private static TempMethodInvocator<Integer> stringWidthAccessor =
+            new TempMethodInvocator<>("sun.swing.SwingUtilities2", "stringWidth",
+                    JComponent.class, FontMetrics.class, String.class);
 
     /**
      * Returns the width of the passed in String.
@@ -428,24 +336,7 @@ public class UIUtilities {
      * @param string String to get the width of
      */
     public static int stringWidth(JComponent c, FontMetrics fm, String string){
-        if (string == null || string.equals("")) {
-            return 0;
-        }
-        boolean needsTextLayout = ((c != null) &&
-                (c.getClientProperty(TextAttribute.NUMERIC_SHAPING) != null));
-        if (needsTextLayout) {
-            synchronized(charsBufferLock) {
-                int length = syncCharsBuffer(string);
-                needsTextLayout = isComplexLayout(charsBuffer, 0, length);
-            }
-        }
-        if (needsTextLayout) {
-            TextLayout layout = createTextLayout(c, string,
-                    fm.getFont(), fm.getFontRenderContext());
-            return (int) layout.getAdvance();
-        } else {
-            return fm.stringWidth(string);
-        }
+        return stringWidthAccessor.staticInvoke(c, fm, string);
     }
 
 
@@ -471,6 +362,9 @@ public class UIUtilities {
         return string;
     }
 
+    private static TempMethodInvocator<String> clipStringAccessor =
+            new TempMethodInvocator<>("sun.swing.SwingUtilities2", "clipString",
+                    JComponent.class, FontMetrics.class, String.class, int.class);
 
     /**
      * Clips the passed in String to the space provided.  NOTE: this assumes
@@ -484,45 +378,12 @@ public class UIUtilities {
      */
     public static String clipString(JComponent c, FontMetrics fm,
                                     String string, int availTextWidth) {
-        // c may be null here.
-        String clipString = "...";
-        availTextWidth -= UIUtilities.stringWidth(c, fm, clipString);
-        if (availTextWidth <= 0) {
-            //can not fit any characters
-            return clipString;
-        }
-
-        boolean needsTextLayout;
-        synchronized (charsBufferLock) {
-            int stringLength = syncCharsBuffer(string);
-            needsTextLayout =
-                    isComplexLayout(charsBuffer, 0, stringLength);
-            if (!needsTextLayout) {
-                int width = 0;
-                for (int nChars = 0; nChars < stringLength; nChars++) {
-                    width += fm.charWidth(charsBuffer[nChars]);
-                    if (width > availTextWidth) {
-                        string = string.substring(0, nChars);
-                        break;
-                    }
-                }
-            }
-        }
-        if (needsTextLayout) {
-            AttributedString aString = new AttributedString(string);
-            if (c != null) {
-                aString.addAttribute(TextAttribute.NUMERIC_SHAPING,
-                        c.getClientProperty(TextAttribute.NUMERIC_SHAPING));
-            }
-            LineBreakMeasurer measurer = new LineBreakMeasurer(
-                    aString.getIterator(), BreakIterator.getCharacterInstance(),
-                    getFontRenderContext(c, fm));
-            string = string.substring(0, measurer.nextOffset(availTextWidth));
-
-        }
-        return string + clipString;
+        return clipStringAccessor.staticInvoke(c, fm, string, availTextWidth);
     }
 
+    private static TempMethodInvocator<Void> drawStringAccessor3 =
+            new TempMethodInvocator<>("sun.swing.SwingUtilities2", "drawString",
+                    JComponent.class, Graphics.class, String.class, int.class, int.class);
 
     /**
      * Draws the string at the specified location.
@@ -535,107 +396,12 @@ public class UIUtilities {
      */
     public static void drawString(JComponent c, Graphics g, String text,
                                   int x, int y) {
-        // c may be null
-
-        // All non-editable widgets that draw strings call into this
-        // methods.  By non-editable that means widgets like JLabel, JButton
-        // but NOT JTextComponents.
-        if ( text == null || text.length() <= 0 ) { //no need to paint empty strings
-            return;
-        }
-        if (isPrinting(g)) {
-            Graphics2D g2d = getGraphics2D(g);
-            if (g2d != null) {
-                /* The printed text must scale linearly with the UI.
-                 * Calculate the width on screen, obtain a TextLayout with
-                 * advances for the printer graphics FRC, and then justify
-                 * it to fit in the screen width. This distributes the spacing
-                 * more evenly than directly laying out to the screen advances.
-                 */
-                String trimmedText = trimTrailingSpaces(text);
-                if (!trimmedText.isEmpty()) {
-                    float screenWidth = (float) g2d.getFont().getStringBounds
-                            (trimmedText, DEFAULT_FRC).getWidth();
-                    TextLayout layout = createTextLayout(c, text, g2d.getFont(),
-                            g2d.getFontRenderContext());
-
-                    layout = layout.getJustifiedLayout(screenWidth);
-                    /* Use alternate print color if specified */
-                    Color col = g2d.getColor();
-                    if (col instanceof PrintColorUIResource) {
-                        g2d.setColor(((PrintColorUIResource)col).getPrintColor());
-                    }
-
-                    layout.draw(g2d, x, y);
-
-                    g2d.setColor(col);
-                }
-
-                return;
-            }
-        }
-
-        // If we get here we're not printing
-        if (g instanceof Graphics2D) {
-            AATextInfo info = drawTextAntialiased(c);
-            Graphics2D g2 = (Graphics2D)g;
-
-            boolean needsTextLayout = ((c != null) &&
-                    (c.getClientProperty(TextAttribute.NUMERIC_SHAPING) != null));
-
-            if (needsTextLayout) {
-                synchronized(charsBufferLock) {
-                    int length = syncCharsBuffer(text);
-                    needsTextLayout = isComplexLayout(charsBuffer, 0, length);
-                }
-            }
-
-            if (info != null) {
-                Object oldContrast = null;
-                Object oldAAValue = g2.getRenderingHint(KEY_TEXT_ANTIALIASING);
-                if (info.aaHint != oldAAValue) {
-                    g2.setRenderingHint(KEY_TEXT_ANTIALIASING, info.aaHint);
-                } else {
-                    oldAAValue = null;
-                }
-                if (info.lcdContrastHint != null) {
-                    oldContrast = g2.getRenderingHint(KEY_TEXT_LCD_CONTRAST);
-                    if (info.lcdContrastHint.equals(oldContrast)) {
-                        oldContrast = null;
-                    } else {
-                        g2.setRenderingHint(KEY_TEXT_LCD_CONTRAST,
-                                info.lcdContrastHint);
-                    }
-                }
-
-                if (needsTextLayout) {
-                    TextLayout layout = createTextLayout(c, text, g2.getFont(),
-                            g2.getFontRenderContext());
-                    layout.draw(g2, x, y);
-                } else {
-                    g.drawString(text, x, y);
-                }
-
-                if (oldAAValue != null) {
-                    g2.setRenderingHint(KEY_TEXT_ANTIALIASING, oldAAValue);
-                }
-                if (oldContrast != null) {
-                    g2.setRenderingHint(KEY_TEXT_LCD_CONTRAST, oldContrast);
-                }
-
-                return;
-            }
-
-            if (needsTextLayout){
-                TextLayout layout = createTextLayout(c, text, g2.getFont(),
-                        g2.getFontRenderContext());
-                layout.draw(g2, x, y);
-                return;
-            }
-        }
-
-        g.drawString(text, x, y);
+        drawStringAccessor3.staticInvoke(c, g, text, x, y);
     }
+
+    private static TempMethodInvocator<Void> drawStringUnderlineCharAtAccessor =
+        new TempMethodInvocator<>("sun.swing.SwingUtilities2", "drawStringUnderlineCharAt",
+            JComponent.class, Graphics.class, String.class, int.class, int.class, int.class);
 
     /**
      * Draws the string at the specified location underlining the specified
@@ -650,57 +416,7 @@ public class UIUtilities {
      */
     public static void drawStringUnderlineCharAt(JComponent c,Graphics g,
                                                  String text, int underlinedIndex, int x,int y) {
-        if (text == null || text.length() <= 0) {
-            return;
-        }
-        UIUtilities.drawString(c, g, text, x, y);
-        int textLength = text.length();
-        if (underlinedIndex >= 0 && underlinedIndex < textLength ) {
-            int underlineRectY = y;
-            int underlineRectHeight = 1;
-            int underlineRectX = 0;
-            int underlineRectWidth = 0;
-            boolean isPrinting = isPrinting(g);
-            boolean needsTextLayout = isPrinting;
-            if (!needsTextLayout) {
-                synchronized (charsBufferLock) {
-                    syncCharsBuffer(text);
-                    needsTextLayout =
-                            isComplexLayout(charsBuffer, 0, textLength);
-                }
-            }
-            if (!needsTextLayout) {
-                FontMetrics fm = g.getFontMetrics();
-                underlineRectX = x +
-                        UIUtilities.stringWidth(c,fm,
-                                text.substring(0,underlinedIndex));
-                underlineRectWidth = fm.charWidth(text.
-                        charAt(underlinedIndex));
-            } else {
-                Graphics2D g2d = getGraphics2D(g);
-                if (g2d != null) {
-                    TextLayout layout =
-                            createTextLayout(c, text, g2d.getFont(),
-                                    g2d.getFontRenderContext());
-                    if (isPrinting) {
-                        float screenWidth = (float)g2d.getFont().
-                                getStringBounds(text, DEFAULT_FRC).getWidth();
-                        layout = layout.getJustifiedLayout(screenWidth);
-                    }
-                    TextHitInfo leading =
-                            TextHitInfo.leading(underlinedIndex);
-                    TextHitInfo trailing =
-                            TextHitInfo.trailing(underlinedIndex);
-                    Shape shape =
-                            layout.getVisualHighlightShape(leading, trailing);
-                    Rectangle rect = shape.getBounds();
-                    underlineRectX = x + rect.x;
-                    underlineRectWidth = rect.width;
-                }
-            }
-            g.fillRect(underlineRectX, underlineRectY + 1,
-                    underlineRectWidth, underlineRectHeight);
-        }
+        drawStringUnderlineCharAtAccessor.staticInvoke(c, g, text, underlinedIndex, x, y);
     }
 
 
@@ -839,6 +555,10 @@ public class UIUtilities {
         return drawChars(c, g, data, offset, length, x, y, true);
     }
 
+    private static TempMethodInvocator<Float> drawCharsAccessor =
+            new TempMethodInvocator<>("sun.swing.SwingUtilities2", "drawChars",
+                    JComponent.class, Graphics.class, char[].class, int.class, int.class, float.class, float.class, boolean.class);
+
     public static float drawChars(JComponent c, Graphics g,
                                   char[] data,
                                   int offset,
@@ -846,87 +566,7 @@ public class UIUtilities {
                                   float x,
                                   float y,
                                   boolean useFPAPI) {
-        if ( length <= 0 ) { //no need to paint empty strings
-            return x;
-        }
-        float nextX = x + getFontCharsWidth(data, offset, length,
-                getFontMetrics(c, g),
-                useFPAPI);
-        if (isPrinting(g)) {
-            Graphics2D g2d = getGraphics2D(g);
-            if (g2d != null) {
-                FontRenderContext deviceFontRenderContext = g2d.
-                        getFontRenderContext();
-                FontRenderContext frc = getFontRenderContext(c);
-                if (frc != null &&
-                        !isFontRenderContextPrintCompatible
-                                (deviceFontRenderContext, frc)) {
-
-                    String text = new String(data, offset, length);
-                    TextLayout layout = new TextLayout(text, g2d.getFont(),
-                            deviceFontRenderContext);
-                    String trimmedText = trimTrailingSpaces(text);
-                    if (!trimmedText.isEmpty()) {
-                        float screenWidth = (float)g2d.getFont().
-                                getStringBounds(trimmedText, frc).getWidth();
-                        layout = layout.getJustifiedLayout(screenWidth);
-
-                        /* Use alternate print color if specified */
-                        Color col = g2d.getColor();
-                        if (col instanceof PrintColorUIResource) {
-                            g2d.setColor(((PrintColorUIResource)col).getPrintColor());
-                        }
-
-                        layout.draw(g2d,x,y);
-
-                        g2d.setColor(col);
-                    }
-
-                    return nextX;
-                }
-            }
-        }
-
-        if (!(g instanceof Graphics2D)) {
-            g.drawChars(data, offset, length, (int) x, (int) y);
-            return nextX;
-        }
-
-        Graphics2D g2 = (Graphics2D) g;
-        // Assume we're not printing if we get here, or that we are invoked
-        // via Swing text printing which is laid out for the printer.
-        AATextInfo info = drawTextAntialiased(c);
-        if (info != null) {
-            Object oldContrast = null;
-            Object oldAAValue = g2.getRenderingHint(KEY_TEXT_ANTIALIASING);
-            if (info.aaHint != null && info.aaHint != oldAAValue) {
-                g2.setRenderingHint(KEY_TEXT_ANTIALIASING, info.aaHint);
-            } else {
-                oldAAValue = null;
-            }
-            if (info.lcdContrastHint != null) {
-                oldContrast = g2.getRenderingHint(KEY_TEXT_LCD_CONTRAST);
-                if (info.lcdContrastHint.equals(oldContrast)) {
-                    oldContrast = null;
-                } else {
-                    g2.setRenderingHint(KEY_TEXT_LCD_CONTRAST,
-                            info.lcdContrastHint);
-                }
-            }
-
-            g2.drawString(new String(data, offset, length), x, y);
-
-            if (oldAAValue != null) {
-                g2.setRenderingHint(KEY_TEXT_ANTIALIASING, oldAAValue);
-            }
-            if (oldContrast != null) {
-                g2.setRenderingHint(KEY_TEXT_LCD_CONTRAST, oldContrast);
-            }
-        }
-        else {
-            g2.drawString(new String(data, offset, length), x, y);
-        }
-        return nextX;
+        return drawCharsAccessor.staticInvoke(c, g, data, offset, length, x, y, useFPAPI);
     }
 
     public static float getFontCharWidth(char c, FontMetrics fm,
@@ -964,6 +604,14 @@ public class UIUtilities {
         }
     }
 
+    private static TempMethodInvocator<Float> drawStringAccessor1 =
+            new TempMethodInvocator<>("sun.swing.SwingUtilities2", "drawString",
+                    JComponent.class, Graphics.class, AttributedCharacterIterator.class, int.class, int.class);
+
+    private static TempMethodInvocator<Float> drawStringAccessor2 =
+            new TempMethodInvocator<>("sun.swing.SwingUtilities2", "drawString",
+                    JComponent.class, Graphics.class, AttributedCharacterIterator.class, float.class, float.class);
+
     /*
      * see documentation for drawChars
      * returns the advance
@@ -972,14 +620,14 @@ public class UIUtilities {
                                    AttributedCharacterIterator iterator,
                                    int x, int y)
     {
-        return drawStringImpl(c, g, iterator, x, y);
+        return drawStringAccessor1.staticInvoke(c, g, iterator, x, y);
     }
 
     public static float drawString(JComponent c, Graphics g,
                                    AttributedCharacterIterator iterator,
                                    float x, float y)
     {
-        return drawStringImpl(c, g, iterator, x, y);
+        return drawStringAccessor2.staticInvoke(c, g, iterator, x, y);
     }
 
     private static float drawStringImpl(JComponent c, Graphics g,
@@ -1218,6 +866,10 @@ public class UIUtilities {
                 : getFontRenderContext(c);
     }
 
+    private static TempMethodInvocator<FontMetrics> getFontMetricsAccessor2 =
+            new TempMethodInvocator<>("sun.swing.SwingUtilities2", "getFontMetrics",
+                    JComponent.class, Font.class);
+
     /*
      * This method is to be used only for JComponent.getFontMetrics.
      * In all other places to get FontMetrics we need to use
@@ -1225,35 +877,19 @@ public class UIUtilities {
      *
      */
     public static FontMetrics getFontMetrics(JComponent c, Font font) {
-        FontRenderContext  frc = getFRCProperty(c);
-        if (frc == null) {
-            frc = DEFAULT_FRC;
-        }
-        return FontDesignMetrics.getMetrics(font, frc);
+        return getFontMetricsAccessor2.staticInvoke(c, font);
     }
+
+    private static TempMethodInvocator<FontRenderContext> getRFCPropertyAccessor =
+            new TempMethodInvocator<>("sun.swing.SwingUtilities2", "getRFCProperty",
+                    JComponent.class, Graphics.class, char[].class, int.class, int.class, float.class, float.class, boolean.class);
 
 
     /* Get any FontRenderContext associated with a JComponent
      * - may return null
      */
     private static FontRenderContext getFRCProperty(JComponent c) {
-        if (c != null) {
-            GraphicsConfiguration gc = c.getGraphicsConfiguration();
-            AffineTransform tx = (gc == null) ? null : gc.getDefaultTransform();
-            // [tav] workaround deadlock on MacOSX until fixed, JRE-226
-            if (!FontUtilities.isMacOSX && tx == null && !GraphicsEnvironment.isHeadless()) {
-                tx =  GraphicsEnvironment
-                        .getLocalGraphicsEnvironment()
-                        .getDefaultScreenDevice()
-                        .getDefaultConfiguration()
-                        .getDefaultTransform();
-            }
-            AATextInfo info = (AATextInfo)c.getClientProperty(AA_TEXT_PROPERTY_KEY);
-            if (info != null) {
-                return info.getFRC(tx);
-            }
-        }
-        return null;
+        return getRFCPropertyAccessor.staticInvoke(c);
     }
 
     /*
