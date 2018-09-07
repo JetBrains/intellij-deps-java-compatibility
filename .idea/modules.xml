@@ -2,7 +2,10 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/intellij-deps-java-compatibility.iml" filepath="$PROJECT_DIR$/intellij-deps-java-compatibility.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/intellij-deps-java-compatibility.iml" filepath="$PROJECT_DIR$/.idea/intellij-deps-java-compatibility.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/java-compatibility.iml" filepath="$PROJECT_DIR$/.idea/modules/java-compatibility.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/java-compatibility_main.iml" filepath="$PROJECT_DIR$/.idea/modules/java-compatibility_main.iml" group="java-compatibility" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/java-compatibility_test.iml" filepath="$PROJECT_DIR$/.idea/modules/java-compatibility_test.iml" group="java-compatibility" />
     </modules>
   </component>
 </project>
