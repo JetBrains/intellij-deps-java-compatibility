@@ -19,6 +19,14 @@ dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
+task sourceJar(type: Jar) {
+    from sourceSets.main.java
+}
+
+artifacts {
+    archives sourceJar
+}
+
 publishing {
     publications {
         MyPublication(MavenPublication) {
@@ -26,6 +34,9 @@ publishing {
             groupId 'org.jetbrains.intellij.deps'
             artifactId 'java-compatibility'
             version '1.0.1'
+            artifact sourceJar {
+                classifier "sources"
+            }
         }
     }
 }
