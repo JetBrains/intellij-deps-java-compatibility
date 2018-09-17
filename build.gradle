@@ -5,9 +5,6 @@ plugins {
 
 apply plugin: 'maven-publish'
 
-jar {
-}
-
 group 'org.jetbrains.intellij.deps'
 version '1.0.1'
 
